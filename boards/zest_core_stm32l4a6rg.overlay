@@ -1,0 +1,10 @@
+/ {
+	examplesensor0: examplesensor_0 {
+		compatible = "zephyr,examplesensor";
+		input-gpios = <&gpioc 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+	};
+};
+
+&gpioc {
+	status = "okay";
+};
