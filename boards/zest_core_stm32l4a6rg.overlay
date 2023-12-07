@@ -1,6 +1,6 @@
 / {
-	examplesensor0: examplesensor_0 {
-		compatible = "zephyr,examplesensor";
+	scd4x0: scd4x_0 {
+		compatible = "sensirion,scd4x";
 		input-gpios = <&gpioc 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 	};
 };

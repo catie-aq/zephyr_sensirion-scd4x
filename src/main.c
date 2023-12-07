@@ -27,7 +27,7 @@ int main(void)
 
 	printk("Zephyr Example Application\n");
 
-	sensor = DEVICE_DT_GET(DT_NODELABEL(examplesensor0));
+	sensor = DEVICE_DT_GET(DT_NODELABEL(scd4x0));
 	if (!device_is_ready(sensor)) {
 		printk("Sensor not ready");
 		return 0;

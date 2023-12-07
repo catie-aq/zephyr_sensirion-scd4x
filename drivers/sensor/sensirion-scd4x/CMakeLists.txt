@@ -3,4 +3,4 @@
 
 #zephyr_library()
 #zephyr_library_sources(examplesensor.c)
-target_sources(app PRIVATE examplesensor.c)
+target_sources(app PRIVATE scd4x.c)
