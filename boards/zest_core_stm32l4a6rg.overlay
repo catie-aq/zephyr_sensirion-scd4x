@@ -1,7 +1,10 @@
-/ {
-	scd4x0: scd4x_0 {
+&i2c3 {
+	status = "okay";
+	pinctrl-0 = <&i2c3_scl_pc0 &i2c3_sda_pc1>;
+	pinctrl-names = "default";
+	scd4x0: scd4x@61 {
 		compatible = "sensirion,scd4x";
-		input-gpios = <&gpioc 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+		reg = <0x61>;
 	};
 };
 

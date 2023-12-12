@@ -5,6 +5,6 @@ config SCD4X
 	bool "Example sensor"
 	default y
 	depends on DT_HAS_SENSIRION_SCD4X_ENABLED
-	select GPIO
+	select I2C
 	help
 	  Enable example sensor

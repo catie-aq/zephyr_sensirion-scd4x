@@ -14,10 +14,4 @@ description: |
 
 compatible: "sensirion,scd4x"
 
-include: base.yaml
-
-properties:
-  input-gpios:
-    type: phandle-array
-    required: true
-    description: Input GPIO to be sensed.
+include: [sensor-device.yaml, i2c-device.yaml]
