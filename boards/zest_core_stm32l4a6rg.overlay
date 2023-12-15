@@ -2,9 +2,10 @@
 	status = "okay";
 	pinctrl-0 = <&i2c3_scl_pc0 &i2c3_sda_pc1>;
 	pinctrl-names = "default";
-	scd4x0: scd4x@61 {
+	clock-frequency = < I2C_BITRATE_FAST >;
+	scd4x0: scd4x@62 {
 		compatible = "sensirion,scd4x";
-		reg = <0x61>;
+		reg = <0x62>;
 	};
 };
 

@@ -7,9 +7,10 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
+#include "scd4x.h"
 
 /* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS   1000
+#define SLEEP_TIME_MS   10000
 
 /* The devicetree node identifier for the "led0" alias. */
 #define LED0_NODE DT_ALIAS(led0)
@@ -42,22 +43,56 @@ int main(void)
 		return 0;
 	}
 
+	// Check I2C peripheral on bus, send a bytes to each address and check ACK */
+	const struct scd4x_config *config = sensor->config;
+	for (uint8_t i = 0; i < 128; i++) {
+		uint8_t data = 0x00;
+		ret = i2c_write(config->i2c.bus, &data, 1, i);
+		if (ret == 0) {
+			printk("I2C peripheral found at address 0x%02x\n", i);
+		}
+		k_sleep(K_MSEC(10));
+	}
+
+	struct sensor_value serial_number;
+	ret = sensor_attr_get(sensor, SENSOR_CHAN_CO2,
+					SCD4X_ATTR_SERIAL_NUMBER, &serial_number);
+	if (ret < 0) {
+		printk("Could not get attribute (%d)", ret);
+		return 0;
+	}
+
+	// print val1 and val2 in hex format
+	printk("Serial number: 0x%08x%08x\n", serial_number.val2, serial_number.val1);
+
 	while (1) {
 		struct sensor_value val;
 
 		ret = sensor_sample_fetch(sensor);
 		if (ret < 0) {
-			printk("Could not fetch sample (%d)", ret);
-			return 0;
+			printk("Could not fetch sample (%d)\n", ret);
 		}
 
-		ret = sensor_channel_get(sensor, SENSOR_CHAN_PROX, &val);
+		ret = sensor_channel_get(sensor, SENSOR_CHAN_CO2, &val);
 		if (ret < 0) {
 			printk("Could not get sample (%d)", ret);
 			return 0;
 		}
+		printk("CO2 value: %d ppm\n", val.val1);
 
-		printk("Sensor value: %d\n", val.val1);
+		ret = sensor_channel_get(sensor, SENSOR_CHAN_HUMIDITY, &val);
+		if (ret < 0) {
+			printk("Could not get sample (%d)", ret);
+			return 0;
+		}
+		printk("Humidity value: %d.%06d %%RH\n", val.val1, val.val2);
+
+		ret = sensor_channel_get(sensor, SENSOR_CHAN_AMBIENT_TEMP, &val);
+		if (ret < 0) {
+			printk("Could not get sample (%d)", ret);
+			return 0;
+		}
+		printk("Temperature value: %d.%06d C\n", val.val1, val.val2);
 
 		ret = gpio_pin_toggle_dt(&led);
 		if (ret < 0) {
