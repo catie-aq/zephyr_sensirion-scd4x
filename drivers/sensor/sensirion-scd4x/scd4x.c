@@ -41,7 +41,6 @@ struct scd4x_data {
 
 static int scd4x_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
-    const struct scd4x_config *config = dev->config;
     struct scd4x_data *data = dev->data;
 
     // Check if sensor is ready
@@ -98,8 +97,6 @@ static int scd4x_attr_set(const struct device *dev,
         enum sensor_attribute attr,
         const struct sensor_value *val)
 {
-    struct scd4x_data *data = dev->data;
-
     if (chan != SENSOR_CHAN_PROX) {
         return -ENOTSUP;
     }
@@ -116,7 +113,7 @@ static int scd4x_attr_get(const struct device *dev,
         return -ENOTSUP;
     }
 
-    if (attr == SCD4X_ATTR_SERIAL_NUMBER) {
+    if (attr == (enum sensor_attribute)SCD4X_ATTR_SERIAL_NUMBER) {
         /* Read device ID */
         uint16_t device_id[3];
         scd4x_read(dev, SCD4X_CMD_GET_SERIAL_NUMBER, 3, device_id);
@@ -174,7 +171,7 @@ static int scd4x_read(const struct device *dev, uint16_t cmd, size_t len, uint16
     const struct scd4x_config *config = dev->config;
 
     U16_TO_BYTE_ARRAY(cmd, read_buf);
-    ret = i2c_write_dt(&config->i2c, &read_buf, sizeof(cmd));
+    ret = i2c_write_dt(&config->i2c, (const uint8_t *)&read_buf, sizeof(cmd));
     if (ret < 0) {
         LOG_ERR("Failed to write command %d", ret);
         return ret;
@@ -218,7 +215,7 @@ static int scd4x_write(const struct device *dev, uint16_t cmd, size_t len, uint1
         read_buf[3 * i + 2 + sizeof(cmd)]
                 = crc8(read_buf + (3 * i) + sizeof(cmd), 2, CRC8_POLYNOMIAL, CRC8_INIT, false);
     }
-    ret = i2c_write_dt(&config->i2c, &read_buf, sizeof(cmd) + len * 3);
+    ret = i2c_write_dt(&config->i2c, (char *)&read_buf, sizeof(cmd) + len * 3);
 
     if (ret < 0) {
         LOG_ERR("Failed to write command %d", ret);
