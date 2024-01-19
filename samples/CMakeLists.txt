@@ -6,4 +6,3 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(scd4x)
 
 target_sources(app PRIVATE src/main.c)
-zephyr_include_directories(drivers/sensor/sensirion-scd4x)
