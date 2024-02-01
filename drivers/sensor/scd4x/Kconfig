@@ -1,4 +1,6 @@
-# Copyright (c) 2021 Nordic Semiconductor ASA
+# SCD4X driver configuration
+
+# Copyright (c) 2024 CATIE
 # SPDX-License-Identifier: Apache-2.0
 
 config SCD4X

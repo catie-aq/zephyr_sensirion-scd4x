@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2024 CATIE
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #ifndef ZEPHYR_DRIVERS_SENSOR_SENSIRION_SCD4X_SCD4X_H_
 #define ZEPHYR_DRIVERS_SENSOR_SENSIRION_SCD4X_SCD4X_H_
 

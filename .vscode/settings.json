@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.cpp": "cpp",
+        "sensor.h": "c",
+        "scd4x.h": "c",
+        "types.h": "c",
+        "log.h": "c",
+        "crc.h": "c"
+    }
+}

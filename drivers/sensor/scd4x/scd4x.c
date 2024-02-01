@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021 Nordic Semiconductor ASA
+ * Copyright (c) 2024 CATIE
+ *
  * SPDX-License-Identifier: Apache-2.0
  */
 
