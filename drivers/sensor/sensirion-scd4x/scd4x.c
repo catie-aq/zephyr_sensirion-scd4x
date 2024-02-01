@@ -35,8 +35,8 @@ LOG_MODULE_REGISTER(scd4x, CONFIG_SENSOR_LOG_LEVEL);
  */
 struct scd4x_data {
     uint16_t co2_ppm;
-    float temperature;
-    float humidity;
+    int32_t temperature;
+    int32_t humidity;
 };
 
 static int scd4x_sample_fetch(const struct device *dev, enum sensor_channel chan)
@@ -55,8 +55,12 @@ static int scd4x_sample_fetch(const struct device *dev, enum sensor_channel chan
     scd4x_read(dev, SCD4X_CMD_READ_MEASUREMENT, 3, measurements);
 
     data->co2_ppm = measurements[0];
-    data->temperature = measurements[1] * 175 / 65535.0 - 45;
-    data->humidity = measurements[2] * 100 / 65535.0;
+    /* Temperature in degrees Celsius is T = -45 + 175 * rawValue / (2^16 - 1)
+    We multiply by 10^7 to use fixed point arithmetic. 175 / (2^16 - 1) * 10^7 = 26703 */
+    data->temperature = measurements[1] * 26703 - 450000000;
+    /* Humidity in percent is RH = rawValue / (2^16 - 1) * 100
+    We multiply by 10^7 to use fixed point arithmetic. 100 / (2^16 - 1) * 10^7 = 15259 */
+    data->humidity = measurements[2] * 15259;
 
     return 0;
 }
@@ -78,14 +82,14 @@ static int scd4x_channel_get(
     }
 
     if (chan == SENSOR_CHAN_AMBIENT_TEMP) {
-        val->val1 = (int32_t)data->temperature;
-        val->val2 = (data->temperature - val->val1) * 1000000;
+        val->val1 = data->temperature / 10000000;
+        val->val2 = (data->temperature % 10000000) / 10;
         return 0;
     }
 
     if (chan == SENSOR_CHAN_HUMIDITY) {
-        val->val1 = (int32_t)data->humidity;
-        val->val2 = (data->humidity - val->val1) * 1000000;
+        val->val1 = data->humidity / 10000000;
+        val->val2 = (data->humidity % 10000000) / 10;
         return 0;
     }
 
@@ -173,7 +177,7 @@ static int scd4x_read(const struct device *dev, uint16_t cmd, size_t len, uint16
     U16_TO_BYTE_ARRAY(cmd, read_buf);
     ret = i2c_write_dt(&config->i2c, (const uint8_t *)&read_buf, sizeof(cmd));
     if (ret < 0) {
-        LOG_ERR("Failed to write command %d", ret);
+        LOG_ERR("Failed to write command 0x%04x, error %d", cmd, ret);
         return ret;
     }
 
@@ -218,7 +222,7 @@ static int scd4x_write(const struct device *dev, uint16_t cmd, size_t len, uint1
     ret = i2c_write_dt(&config->i2c, (char *)&read_buf, sizeof(cmd) + len * 3);
 
     if (ret < 0) {
-        LOG_ERR("Failed to write command %d", ret);
+        LOG_ERR("Failed to write command 0x%04x, error %d", cmd, ret);
         return ret;
     }
 
