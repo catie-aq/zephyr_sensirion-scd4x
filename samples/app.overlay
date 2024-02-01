@@ -1,0 +1,8 @@
+&sixtron_i2c {
+	status = "okay";
+
+	scd4x0: scd4x@62 {
+		compatible = "sensirion,scd4x";
+		reg = <0x62>;
+	};
+};
