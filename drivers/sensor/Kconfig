@@ -2,5 +2,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
 if SENSOR
-rsource "sensirion-scd4x/Kconfig"
+rsource "scd4x/Kconfig"
 endif # SENSOR
