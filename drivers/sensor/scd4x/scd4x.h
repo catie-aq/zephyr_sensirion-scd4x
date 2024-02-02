@@ -11,8 +11,6 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/types.h>
 
-#define SCD4X_I2C_ADDRESS 0x62
-
 /* Commands */
 #define SCD4X_CMD_START_PERIODIC_MEASUREMENT 0x21B1
 #define SCD4X_CMD_READ_MEASUREMENT 0xEC05
