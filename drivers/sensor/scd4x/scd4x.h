@@ -7,9 +7,9 @@
 #ifndef ZEPHYR_DRIVERS_SENSOR_SENSIRION_SCD4X_SCD4X_H_
 #define ZEPHYR_DRIVERS_SENSOR_SENSIRION_SCD4X_SCD4X_H_
 
+#include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/types.h>
-#include <zephyr/drivers/i2c.h>
 
 #define SCD4X_I2C_ADDRESS 0x62
 
@@ -40,10 +40,10 @@ enum scd4x_attr {
 
 /**
  * @brief User define structure accessible through the dev->config
- * 
+ *
  */
 struct scd4x_config {
-	struct i2c_dt_spec i2c;
+    struct i2c_dt_spec i2c;
 };
 
 static int scd4x_read(const struct device *dev, uint16_t cmd, size_t len, uint16_t *val);
