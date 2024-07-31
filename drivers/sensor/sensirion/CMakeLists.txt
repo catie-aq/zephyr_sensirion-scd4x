@@ -1,6 +1,4 @@
 # Copyright (c) 2024 CATIE
 # SPDX-License-Identifier: Apache-2.0
 
-if SENSOR
-rsource "sensirion/Kconfig"
-endif # SENSOR
+add_subdirectory_ifdef(CONFIG_SCD4X scd4x)
