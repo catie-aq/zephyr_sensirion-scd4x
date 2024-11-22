@@ -1,0 +1,8 @@
+sample:
+  name: SCD4x CO2 sensor sample
+tests:
+  sample.default:
+    tags: sensor
+    integration_platforms:
+      - zest_core_stm32l4a6rg
+    depends_on: i2c
