@@ -44,9 +44,4 @@ struct scd4x_config {
     struct i2c_dt_spec i2c;
 };
 
-static int scd4x_read(const struct device *dev, uint16_t cmd, size_t len, uint16_t *val);
-static int scd4x_write(const struct device *dev, uint16_t cmd, size_t len, uint16_t *val);
-static int scd4x_send_command(const struct device *dev, uint16_t cmd);
-static int scd4x_send_and_fetch(const struct device *dev, uint16_t cmd, uint16_t *val);
-
 #endif /* ZEPHYR_DRIVERS_SENSOR_SENSIRION_SCD4X_SCD4X_H_ */

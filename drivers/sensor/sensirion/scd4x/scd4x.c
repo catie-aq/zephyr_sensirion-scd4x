@@ -11,9 +11,14 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/crc.h>
-LOG_MODULE_REGISTER(scd4x, CONFIG_SENSOR_LOG_LEVEL);
 
 #include "scd4x.h"
+
+LOG_MODULE_REGISTER(scd4x, CONFIG_SENSOR_LOG_LEVEL);
+
+#define MAX_READ_SIZE (3)
+#define CRC8_POLYNOMIAL (0x31)
+#define CRC8_INIT (0xFF)
 
 #define U16_TO_BYTE_ARRAY(u, ba)                                                                   \
     do {                                                                                           \
@@ -26,10 +31,6 @@ LOG_MODULE_REGISTER(scd4x, CONFIG_SENSOR_LOG_LEVEL);
         u = (ba[0] << 8) | (ba[1]);                                                                \
     } while (0)
 
-#define MAX_READ_SIZE (3)
-#define CRC8_POLYNOMIAL (0x31)
-#define CRC8_INIT (0xFF)
-
 /**
  * @brief User define structure accessible through the API dev->data
  *
@@ -39,6 +40,75 @@ struct scd4x_data {
     int32_t temperature;
     int32_t humidity;
 };
+
+/** Read buffer */
+static char read_buf[3 * MAX_READ_SIZE];
+
+static int scd4x_read(const struct device *dev, uint16_t cmd, size_t len, uint16_t *val)
+{
+    int ret;
+
+    const struct scd4x_config *config = dev->config;
+
+    U16_TO_BYTE_ARRAY(cmd, read_buf);
+    ret = i2c_write_dt(&config->i2c, (const uint8_t *)&read_buf, sizeof(cmd));
+    if (ret < 0) {
+        LOG_ERR("Failed to write command 0x%04x, error %d", cmd, ret);
+        return ret;
+    }
+
+    k_sleep(K_MSEC(1));
+
+    /* Each response element is 3 bytes long, a 2 bytes word and a CRC8 */
+    ret = i2c_read_dt(&config->i2c, read_buf, len * 3);
+    if (ret < 0) {
+        LOG_ERR("Failed to read response");
+        return ret;
+    }
+
+    /* Verify CRC of each word */
+    uint8_t crc;
+    for (int i = 0; i < len; i++) {
+        crc = crc8(read_buf + (3 * i), 2, CRC8_POLYNOMIAL, CRC8_INIT, false);
+        if (crc != read_buf[3 * i + 2]) {
+            LOG_ERR("CRC error");
+            return -EIO;
+        }
+    }
+
+    for (int i = 0; i < len; i++) {
+        BYTE_ARRAY_TO_U16((read_buf + (3 * i)), val[i]);
+    }
+
+    return 0;
+}
+
+static int scd4x_write(const struct device *dev, uint16_t cmd, size_t len, uint16_t *val)
+{
+    int ret;
+
+    const struct scd4x_config *config = dev->config;
+
+    U16_TO_BYTE_ARRAY(cmd, read_buf);
+    for (int i = 0; i < len; i++) {
+        U16_TO_BYTE_ARRAY(val[i], (read_buf + (3 * i) + sizeof(cmd)));
+        read_buf[3 * i + 2 + sizeof(cmd)]
+                = crc8(read_buf + (3 * i) + sizeof(cmd), 2, CRC8_POLYNOMIAL, CRC8_INIT, false);
+    }
+    ret = i2c_write_dt(&config->i2c, (char *)&read_buf, sizeof(cmd) + len * 3);
+
+    if (ret < 0) {
+        LOG_ERR("Failed to write command 0x%04x, error %d", cmd, ret);
+        return ret;
+    }
+
+    return 0;
+}
+
+static int scd4x_send_command(const struct device *dev, uint16_t cmd)
+{
+    return scd4x_write(dev, cmd, 0, NULL);
+}
 
 static int scd4x_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
@@ -130,13 +200,6 @@ static int scd4x_attr_get(const struct device *dev,
     return -ENOTSUP;
 }
 
-static const struct sensor_driver_api scd4x_api = {
-    .sample_fetch = &scd4x_sample_fetch,
-    .channel_get = &scd4x_channel_get,
-    .attr_set = &scd4x_attr_set,
-    .attr_get = &scd4x_attr_get,
-};
-
 static int scd4x_init(const struct device *dev)
 {
     const struct scd4x_config *config = dev->config;
@@ -148,7 +211,6 @@ static int scd4x_init(const struct device *dev)
         return -ENODEV;
     }
 
-    // Stop periodic measurement
     ret = scd4x_send_command(dev, SCD4X_CMD_STOP_PERIODIC_MEASUREMENT);
     if (ret < 0) {
         LOG_ERR("Failed to stop periodic measurement");
@@ -157,7 +219,6 @@ static int scd4x_init(const struct device *dev)
 
     k_sleep(K_MSEC(500)); // Wait for stop
 
-    // Start periodic measurement
     ret = scd4x_send_command(dev, SCD4X_CMD_START_PERIODIC_MEASUREMENT);
     if (ret < 0) {
         LOG_ERR("Failed to start periodic measurement");
@@ -166,96 +227,31 @@ static int scd4x_init(const struct device *dev)
 
     return 0;
 }
-/** Read buffer */
-static char read_buf[3 * MAX_READ_SIZE];
-
-static int scd4x_read(const struct device *dev, uint16_t cmd, size_t len, uint16_t *val)
-{
-    int ret;
-
-    const struct scd4x_config *config = dev->config;
-
-    U16_TO_BYTE_ARRAY(cmd, read_buf);
-    ret = i2c_write_dt(&config->i2c, (const uint8_t *)&read_buf, sizeof(cmd));
-    if (ret < 0) {
-        LOG_ERR("Failed to write command 0x%04x, error %d", cmd, ret);
-        return ret;
-    }
-
-    k_sleep(K_MSEC(1));
-
-    /* Each response element is 3 bytes long, a 2 bytes word and a CRC8 */
-    ret = i2c_read_dt(&config->i2c, read_buf, len * 3);
-    if (ret < 0) {
-        LOG_ERR("Failed to read response");
-        return ret;
-    }
-
-    /* Verify CRC of each word */
-    uint8_t crc;
-    for (int i = 0; i < len; i++) {
-        crc = crc8(read_buf + (3 * i), 2, CRC8_POLYNOMIAL, CRC8_INIT, false);
-        if (crc != read_buf[3 * i + 2]) {
-            LOG_ERR("CRC error");
-            return -EIO;
-        }
-    }
-
-    for (int i = 0; i < len; i++) {
-        BYTE_ARRAY_TO_U16((read_buf + (3 * i)), val[i]);
-    }
-
-    return 0;
-}
-
-static int scd4x_write(const struct device *dev, uint16_t cmd, size_t len, uint16_t *val)
-{
-    int ret;
-
-    const struct scd4x_config *config = dev->config;
-
-    U16_TO_BYTE_ARRAY(cmd, read_buf);
-    for (int i = 0; i < len; i++) {
-        U16_TO_BYTE_ARRAY(val[i], (read_buf + (3 * i) + sizeof(cmd)));
-        read_buf[3 * i + 2 + sizeof(cmd)]
-                = crc8(read_buf + (3 * i) + sizeof(cmd), 2, CRC8_POLYNOMIAL, CRC8_INIT, false);
-    }
-    ret = i2c_write_dt(&config->i2c, (char *)&read_buf, sizeof(cmd) + len * 3);
-
-    if (ret < 0) {
-        LOG_ERR("Failed to write command 0x%04x, error %d", cmd, ret);
-        return ret;
-    }
-
-    return 0;
-}
-
-static int scd4x_send_command(const struct device *dev, uint16_t cmd)
-{
-    return scd4x_write(dev, cmd, 0, NULL);
-}
-
+/*
 static int scd4x_send_and_fetch(const struct device *dev, uint16_t cmd, uint16_t *val)
 {
     int ret;
-
     ret = scd4x_send_command(dev, cmd);
     if (ret < 0) {
         return ret;
     }
-
     k_sleep(K_MSEC(1));
-
     return scd4x_read(dev, cmd, 1, val);
 }
+*/
+
+static const struct sensor_driver_api scd4x_api = {
+    .sample_fetch = &scd4x_sample_fetch,
+    .channel_get = &scd4x_channel_get,
+    .attr_set = &scd4x_attr_set,
+    .attr_get = &scd4x_attr_get,
+};
 
 #define SCD4X_INIT(i)                                                                              \
     static struct scd4x_data scd4x_data_##i;                                                       \
-                                                                                                   \
     static const struct scd4x_config scd4x_config_##i = {                                          \
         .i2c = I2C_DT_SPEC_INST_GET(i),                                                            \
     };                                                                                             \
-                                                                                                   \
     DEVICE_DT_INST_DEFINE(i,                                                                       \
             scd4x_init,                                                                            \
             NULL,                                                                                  \
